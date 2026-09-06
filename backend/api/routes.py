@@ -7,9 +7,11 @@ from fastapi import APIRouter, File, Request, UploadFile
 
 from config import settings
 from errors import AppError
-from schemas import ErrorResponse, HealthData, SuccessResponse, UploadData
+from schemas import AsrData, AsrRequest, ErrorResponse, ExtractData, ExtractRequest, HealthData, SuccessResponse, UploadData
+from services import asr as asr_service
+from services import extract as extract_service
 from services.audio_probe import probe_webm_opus
-from services.storage import save_audio
+from services.storage import load_audio, save_audio
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -88,4 +90,45 @@ async def upload(request: Request, file: UploadFile = File(...)) -> SuccessRespo
     return SuccessResponse(
         request_id=_request_id(request),
         data=UploadData(audio_id=audio_id),
+    )
+
+
+@router.post(
+    "/asr",
+    response_model=SuccessResponse[AsrData],
+    responses={
+        404: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+        504: {"model": ErrorResponse},
+    },
+)
+async def asr(request: Request, body: AsrRequest) -> SuccessResponse[AsrData]:
+    audio_bytes = load_audio(body.audio_id, stage="asr")
+    logger.info("stage=asr audio_id=%s size_bytes=%s", body.audio_id, len(audio_bytes))
+    text = await asr_service.transcribe(audio_bytes)
+    logger.info("stage=asr audio_id=%s result=ok text_len=%s", body.audio_id, len(text))
+    return SuccessResponse(
+        request_id=_request_id(request),
+        data=AsrData(text=text),
+    )
+
+
+@router.post(
+    "/extract",
+    response_model=SuccessResponse[ExtractData],
+    responses={
+        422: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+        504: {"model": ErrorResponse},
+    },
+)
+async def extract(request: Request, body: ExtractRequest) -> SuccessResponse[ExtractData]:
+    logger.info("stage=extract text_len=%s city=%s", len(body.text), body.city)
+    data = await extract_service.extract_meetup(body.text, body.city)
+    logger.info("stage=extract result=ok category=%s", data.category)
+    return SuccessResponse(
+        request_id=_request_id(request),
+        data=data,
     )
