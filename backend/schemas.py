@@ -23,3 +23,7 @@ class ErrorResponse(BaseModel):
 
 class HealthData(BaseModel):
     status: str = Field(examples=["ok"])
+
+
+class UploadData(BaseModel):
+    audio_id: str = Field(examples=["aud_7f3a9c12e4b8"])

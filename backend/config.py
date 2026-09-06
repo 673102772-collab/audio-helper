@@ -33,5 +33,12 @@ class Settings(BaseSettings):
 
     amap_api_key: str = ""
 
+    storage_dir: Path = BACKEND_DIR / "storage"
+    audio_ttl_hours: int = 24
+    max_audio_bytes: int = 5 * 1024 * 1024
+    min_audio_duration_s: float = 1.0
+    max_audio_duration_s: float = 60.0
+    ffprobe_timeout_s: float = 5.0
+
 
 settings = Settings()
