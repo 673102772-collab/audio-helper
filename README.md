@@ -13,7 +13,9 @@
 
 ## 配置
 
-复制 `backend/.env.example` 为 `backend/.env`。骨架阶段密钥可留空，健康检查不依赖外部服务。
+密钥写在 `backend/.env`。没有 `.env` 时，后端启动会从 `.env.example` 创建一份。已有 `.env` 时，即使启动命令里有 `cp .env.example .env` 也不会覆盖。
+
+语音识别需要填写 `BAILIAN_API_KEY`。
 
 ## 启动后端
 

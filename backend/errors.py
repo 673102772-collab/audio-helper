@@ -40,7 +40,15 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         del exc
-        stage = "upload" if request.url.path.rstrip("/") == "/upload" else "request"
+        path = request.url.path.rstrip("/")
+        if path == "/upload":
+            stage = "upload"
+        elif path == "/asr":
+            stage = "asr"
+        elif path == "/extract":
+            stage = "extract"
+        else:
+            stage = "request"
         return error_response(
             request,
             422,

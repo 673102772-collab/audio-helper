@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from config import settings
+from errors import AppError
+
+AUDIO_ID_PATTERN = re.compile(r"^aud_[0-9a-f]{12}$")
+AUDIO_NOT_FOUND_MESSAGE = "录音编号无效或已过期，请重新录音"
 
 
 def generate_audio_id() -> str:
@@ -57,3 +62,34 @@ def save_audio(
         meta_path.unlink(missing_ok=True)
         raise
     return audio_id
+
+
+def _audio_not_found(stage: str) -> None:
+    raise AppError(404, "AUDIO_NOT_FOUND", AUDIO_NOT_FOUND_MESSAGE, stage)
+
+
+def load_audio(audio_id: str, *, stage: str = "asr") -> bytes:
+    if not AUDIO_ID_PATTERN.fullmatch(audio_id):
+        _audio_not_found(stage)
+
+    file_path = audio_file_path(audio_id)
+    meta_path = audio_meta_path(audio_id)
+    if not file_path.is_file() or not meta_path.is_file():
+        _audio_not_found(stage)
+
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        created_at = datetime.fromisoformat(str(meta["created_at"]))
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        _audio_not_found(stage)
+
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    expires_at = created_at + timedelta(hours=settings.audio_ttl_hours)
+    if datetime.now(timezone.utc) >= expires_at:
+        _audio_not_found(stage)
+
+    try:
+        return file_path.read_bytes()
+    except OSError:
+        _audio_not_found(stage)
