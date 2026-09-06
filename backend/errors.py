@@ -47,6 +47,12 @@ def register_error_handlers(app: FastAPI) -> None:
             stage = "asr"
         elif path == "/extract":
             stage = "extract"
+        elif path == "/search":
+            stage = "search"
+        elif path == "/finalize":
+            stage = "finalize"
+        elif path.startswith("/audio"):
+            stage = "audio_download"
         else:
             stage = "request"
         return error_response(

@@ -32,7 +32,7 @@ function formatSize(byteLength) {
   return `${(byteLength / 1024).toFixed(1)} KB`;
 }
 
-export default function RecordPanel() {
+export default function RecordPanel({ onRoundStart, onClipReady, busy = false }) {
   const [phase, setPhase] = useState("idle");
   const [message, setMessage] = useState("");
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -100,8 +100,14 @@ export default function RecordPanel() {
       filename: `meetup-recording.${extensionForMime(mimeType)}`,
     });
     setPhase("ready");
-    setMessage("录音完成，可以试听或下载。");
+    setMessage("录音完成，正在查找碰面地点");
     setElapsedMs(durationMs);
+    onClipReady?.({
+      blob,
+      mimeType,
+      durationMs,
+      filename: `meetup-recording.${extensionForMime(mimeType)}`,
+    });
   }
 
   function stopRecording(reason) {
@@ -164,6 +170,7 @@ export default function RecordPanel() {
     setMessage("");
     setElapsedMs(0);
     setPhase("requesting");
+    onRoundStart?.();
 
     const session = {
       pointerId,
@@ -340,7 +347,11 @@ export default function RecordPanel() {
         {recording ? "松开结束" : "按住说话"}
       </button>
       <p className="record-status" role="status">
-        {recording ? `录音中 ${formatDuration(elapsedMs)} / 60.0 秒` : message}
+        {recording
+          ? `录音中 ${formatDuration(elapsedMs)} / 60.0 秒`
+          : busy
+            ? `${message || "正在处理，再次按住将开始新一轮"}`
+            : message}
       </p>
       {clip ? (
         <div className="record-result">
@@ -351,7 +362,7 @@ export default function RecordPanel() {
             {formatDuration(clip.durationMs)} · {formatSize(clip.size)} · {clip.mimeType}
           </p>
           <a className="download-link" href={clip.url} download={clip.filename}>
-            下载录音文件（临时，供上传接口测试）
+            下载本段录音
           </a>
         </div>
       ) : null}

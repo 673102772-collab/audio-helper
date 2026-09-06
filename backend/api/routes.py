@@ -3,15 +3,18 @@ import tempfile
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, File, Path as PathParam, Request, UploadFile
+from fastapi.responses import Response
 
 from config import settings
 from errors import AppError
-from schemas import AsrData, AsrRequest, ErrorResponse, ExtractData, ExtractRequest, HealthData, SuccessResponse, UploadData
+from schemas import AsrData, AsrRequest, ErrorResponse, ExtractData, ExtractRequest, FinalizeData, FinalizeRequest, HealthData, SearchData, SearchRequest, SuccessResponse, UploadData
 from services import asr as asr_service
 from services import extract as extract_service
+from services import finalize as finalize_service
+from services import search as search_service
 from services.audio_probe import probe_webm_opus
-from services.storage import load_audio, save_audio
+from services.storage import load_audio, load_tts_audio, save_audio
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -132,3 +135,79 @@ async def extract(request: Request, body: ExtractRequest) -> SuccessResponse[Ext
         request_id=_request_id(request),
         data=data,
     )
+
+
+@router.post(
+    "/search",
+    response_model=SuccessResponse[SearchData],
+    responses={
+        422: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+        504: {"model": ErrorResponse},
+    },
+)
+async def search(request: Request, body: SearchRequest) -> SuccessResponse[SearchData]:
+    logger.info(
+        "stage=search city_a=%s city_b=%s category=%s",
+        body.city_a,
+        body.city_b,
+        body.category,
+    )
+    data = await search_service.search_meetup(
+        city_a=body.city_a,
+        address_a=body.address_a,
+        city_b=body.city_b,
+        address_b=body.address_b,
+        category=body.category,
+    )
+    logger.info("stage=search result=ok search_id=%s poi_count=%s", data.search_id, len(data.pois))
+    return SuccessResponse(
+        request_id=_request_id(request),
+        data=data,
+    )
+
+
+@router.post(
+    "/finalize",
+    response_model=SuccessResponse[FinalizeData],
+    responses={
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+        504: {"model": ErrorResponse},
+    },
+)
+async def finalize(request: Request, body: FinalizeRequest) -> SuccessResponse[FinalizeData]:
+    logger.info("stage=finalize search_id=%s", body.search_id)
+    data = await finalize_service.finalize_search(body.search_id)
+    logger.info(
+        "stage=finalize result=ok has_audio=%s warning=%s",
+        data.audio_url is not None,
+        bool(data.warning),
+    )
+    return SuccessResponse(
+        request_id=_request_id(request),
+        data=data,
+    )
+
+
+@router.get(
+    "/audio/{audio_id}",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {
+                "audio/wav": {},
+                "audio/mpeg": {},
+                "audio/ogg": {},
+            }
+        },
+        404: {"model": ErrorResponse},
+    },
+)
+async def download_audio(
+    audio_id: str = PathParam(..., examples=["tts_9d2b4e7c1a5f"]),
+) -> Response:
+    data, content_type = load_tts_audio(audio_id)
+    logger.info("stage=audio_download audio_id=%s content_type=%s size_bytes=%s", audio_id, content_type, len(data))
+    return Response(content=data, media_type=content_type)

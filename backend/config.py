@@ -62,8 +62,17 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-v4-flash"
     deepseek_timeout_s: float = 15.0
     deepseek_extract_max_tokens: int = 800
+    deepseek_reply_timeout_s: float = 15.0
 
     amap_api_key: str = ""
+    amap_geocode_url: str = "https://restapi.amap.com/v3/geocode/geo"
+    amap_around_url: str = "https://restapi.amap.com/v3/place/around"
+    amap_geocode_timeout_s: float = 6.0
+    amap_poi_timeout_s: float = 8.0
+    poi_radius_m: int = 2000
+    poi_expand_radius_m: int = 5000
+    poi_limit: int = 3
+    search_ttl_hours: int = 24
 
     storage_dir: Path = BACKEND_DIR / "storage"
     audio_ttl_hours: int = 24
@@ -75,6 +84,11 @@ class Settings(BaseSettings):
     bailian_asr_timeout_s: float = 30.0
     bailian_asr_language: str = "zh"
     bailian_asr_enable_itn: bool = True
+    bailian_tts_language_type: str = "Chinese"
+    bailian_tts_timeout_s: float = 20.0
+    tts_download_timeout_s: float = 8.0
+    deepseek_reply_max_tokens: int = 400
+    public_base_url: str = "http://localhost:8003"
 
 
 settings = Settings()

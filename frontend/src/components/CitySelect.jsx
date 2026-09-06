@@ -11,11 +11,11 @@ const CITIES = [
   "苏州",
 ];
 
-export default function CitySelect({ value, onChange }) {
+export default function CitySelect({ value, onChange, disabled = false }) {
   return (
     <label className="city-select">
       城市
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         {CITIES.map((city) => (
           <option key={city} value={city}>
             {city}

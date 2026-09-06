@@ -60,3 +60,38 @@ class ExtractData(BaseModel):
     city_b: str
     address_b: str
     category: str
+
+
+class SearchRequest(BaseModel):
+    city_a: str = Field(min_length=1, examples=["杭州"])
+    address_a: str = Field(min_length=1, examples=["杭州东站"])
+    city_b: str = Field(min_length=1, examples=["杭州"])
+    address_b: str = Field(min_length=1, examples=["西湖龙翔桥地铁站"])
+    category: str = Field(min_length=1, examples=["咖啡店"])
+
+
+class Midpoint(BaseModel):
+    longitude: float
+    latitude: float
+
+
+class PoiItem(BaseModel):
+    name: str
+    address: str
+    distance_to_midpoint_m: float
+
+
+class SearchData(BaseModel):
+    search_id: str
+    midpoint: Midpoint
+    pois: list[PoiItem]
+
+
+class FinalizeRequest(BaseModel):
+    search_id: str = Field(examples=["srch_9d2b4e7c1a5f"])
+
+
+class FinalizeData(BaseModel):
+    reply_text: str
+    audio_url: str | None
+    warning: str | None
